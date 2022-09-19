@@ -34,7 +34,7 @@ func main() {
                                    v 1.0.1
 
 Search from "https://web.archive.org/cdx/search/cdx" matching urls containing a specific name
-example: arewsSearch -d example.com -s jump,proxy ...
+example: Hiseek -d example.com -s jump,proxy ...
     `
 	fmt.Println(string(banner))
 
