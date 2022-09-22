@@ -32,7 +32,7 @@ func main() {
 |   |   |__|.-----.-----.-----.|  |--.
 |       |  ||__ --|  -__|  -__||    < 
 |___|___|__||_____|_____|_____||__|__|
-                                        v 1.0.2
+                                        v1.0.2
 
 Search from "https://web.archive.org/cdx/search/cdx" matching urls containing a specific name
 example: Hiseek -d example.com -s jump,proxy ...

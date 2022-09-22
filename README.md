@@ -34,7 +34,7 @@
 
   cat example.com | Hiseek -silent | httpx -proxy http://127.0.0.1:7777 
 
-  # 设置代理 proxy （ 对于国内无法访问直接 web.archive.org 的情况下 需要设置代理）
+  # 设置代理 proxy （ 对无法访问直接网络 web.archive.org 的情况下 需要设置代理）
   cat example.com | Hiseek -proxy http://127.0.0.1:1089
 
 ```
