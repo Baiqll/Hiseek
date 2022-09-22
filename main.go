@@ -194,7 +194,7 @@ func search_web_archive(domain string, search string, exclude string, repeat boo
 	}
 
 	// 快速判断是否网络可达
-	if _,err := archive_client.SetTimeout(0).R().Get(Url.String());err != nil{
+	if _,err := archive_client.SetTimeout(time.Second * 10).R().Get(Url.String());err != nil{
 		fmt.Println("[*] Network error: network unreachable")
 		return "Network error"
 	}
