@@ -32,7 +32,7 @@ func main() {
 |   |   |__|.-----.-----.-----.|  |--.
 |       |  ||__ --|  -__|  -__||    < 
 |___|___|__||_____|_____|_____||__|__|
-                                        v1.0.6
+                                        v1.0.7
 
 Search from "https://web.archive.org/cdx/search/cdx" matching urls containing a specific name
 example: Hiseek -d example.com -s jump,proxy ...
@@ -194,7 +194,7 @@ func search_web_archive(domain string, search string, exclude string, repeat boo
 	}
 
 	// 快速判断是否网络可达
-	if _,err := archive_client.SetTimeout(time.Second * 3).R().Get(Url.String());err != nil{
+	if _,err := archive_client.SetTimeout(time.Second * 5).R().Get(Url.String());err != nil{
 		fmt.Println("[*] Network error: network unreachable")
 		return "Network error"
 	}
