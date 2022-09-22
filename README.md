@@ -27,9 +27,15 @@
   # 查询结果导出 子域名、子域名字典
   # 生成 sub_domain_example.txt 、dict_example.txt 两个文件
   cat example.com | Hiseek -od example.txt
+  
 
-  # 使用代理 proxy 和xray、nuclei 等联动
-  cat example.com | Hiseek -proxy http://127.0.0.1:7777 
+  # 联合xray、nuclei 等进行被动扫描
+  cat example.com | Hiseek -scan http://127.0.0.1:7777 
+
+  cat example.com | Hiseek -silent | httpx -proxy http://127.0.0.1:7777 
+
+  # 设置代理 proxy （ 对于国内无法访问直接 web.archive.org 的情况下 需要设置代理）
+  cat example.com | Hiseek -proxy http://127.0.0.1:1089
 
 ```
 
@@ -37,6 +43,7 @@
 #### 安装
 
 ```bash
+
   go install github.com/arews-cn/Hiseek@latest
 
 ```

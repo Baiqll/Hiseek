@@ -11,7 +11,6 @@ import (
 	"regexp"
 
 	"io/ioutil"
-	"net/http"
 	"net/url"
 	"strings"
 
@@ -21,8 +20,10 @@ import (
 
 var url_set []string
 var domain_set []string
-var client resty.Client
+var archive_client resty.Client
+var scan_client resty.Client
 var is_proxy bool
+var is_scan_proxy bool
 
 func main() {
 
@@ -31,37 +32,53 @@ func main() {
 |   |   |__|.-----.-----.-----.|  |--.
 |       |  ||__ --|  -__|  -__||    < 
 |___|___|__||_____|_____|_____||__|__|
-                                   v 1.0.1
+                                        v 1.0.1
 
 Search from "https://web.archive.org/cdx/search/cdx" matching urls containing a specific name
-example: arewsSearch -d example.com -s jump,proxy ...
+example: Hiseek -d example.com -s jump,proxy ...
     `
-	fmt.Println(string(banner))
+	
 
 	now:=time.Now().Format("2006-01-02 15:04:05")
-	fmt.Println("[*] Starting search @ ",now)
+
+
 
 	var domain string
 	var search string
 	var exclude string
 	var world_dict string
-	var repeat string
+	var repeat bool
 	var out_domain_path string
 	var proxy string
-	var online string
+	var scan string
+	var online bool
+	var silent bool
+
 
 	// &domain 就是接收命令行中输入 -d 后面的参数值，其他同理
 	flag.StringVar(&domain, "d", "", "域名")
 	flag.StringVar(&search, "s", "", "查询匹配字符 （可同时匹配多个字符,使用 ',' 隔开）")
 	flag.StringVar(&exclude, "e", "", "排除匹配字符 （可同时匹配多个字符,使用 ',' 隔开）")
 	flag.StringVar(&world_dict, "w", "", "子域名字典")
-	flag.StringVar(&repeat, "re", "true", "是否去除重复path  (true,false)")
 	flag.StringVar(&out_domain_path, "od", "", "导出域名字典")
-	flag.StringVar(&proxy, "proxy", "", "使用代理")
-	flag.StringVar(&online, "online", "false", "检查是否在线-域名是否解析正常 (true,false)")
+	flag.StringVar(&proxy, "proxy", "", "使用代理，网络不通的需要设置代理")
+	flag.StringVar(&scan, "scan", "", "设置被动扫描器")
+	flag.BoolVar(&repeat, "re", true, "是否去除重复path  (true,false)")
+	flag.BoolVar(&online, "online", false, "检查是否在线 (true,false)")
+	flag.BoolVar(&silent, "silent", false, "静默状态")
 
 	// 解析命令行参数写入注册的flag里
 	flag.Parse()
+
+
+	// 静默状态下 不打印banner 信息
+	if !silent{
+		fmt.Println(string(banner))
+		fmt.Println("[*] Starting search @ ",now)
+		fmt.Println("[*] matching result:")
+	}
+
+	archive_client = *resty.New()
 
 	// 使用proxy 代理
 	if proxy != "" {
@@ -72,13 +89,26 @@ example: arewsSearch -d example.com -s jump,proxy ...
 		if parseErr != nil {
 			return
 		}
-		client = *resty.New()
-		client.SetProxy(proxy)
-		client.SetTimeout(0)
+		
+		archive_client.SetProxy(proxy)
+		archive_client.SetTimeout(0)
 
 	}
 
-	fmt.Println("[*] matching result:")
+	// 使用扫描代理 scan
+	if scan != "" {
+
+		is_scan_proxy = true
+
+		_, parseErr := url.Parse(scan)
+		if parseErr != nil {
+			return
+		}
+		scan_client = *resty.New()
+		scan_client.SetProxy(scan)
+		scan_client.SetTimeout(0)
+
+	}
 
 	// 如果管道有参数传递
 	if has_stdin() {
@@ -86,15 +116,15 @@ example: arewsSearch -d example.com -s jump,proxy ...
 		s := bufio.NewScanner(os.Stdin)
 
 		for s.Scan() {
-
-			if online == "true" {
+			
+			if online {
 				if IsOnline(s.Text()) {
-					search_web_archive(s.Text(), search, exclude, repeat, out_domain_path)
+					search_web_archive(s.Text(), search, exclude, repeat, out_domain_path, silent)
 					continue
 				}
 			}
 
-			search_web_archive(s.Text(), search, exclude, repeat, out_domain_path)
+			search_web_archive(s.Text(), search, exclude, repeat, out_domain_path, silent)
 		}
 
 	}
@@ -117,26 +147,26 @@ example: arewsSearch -d example.com -s jump,proxy ...
 			}
 
 			fmt.Println(sub_domain)
-			if online == "true" {
+			if online{
 				if IsOnline(sub_domain) {
-					search_web_archive(sub_domain, search, exclude, repeat, out_domain_path)
+					search_web_archive(sub_domain, search, exclude, repeat, out_domain_path, silent)
 					continue
 				}
 			}
 
-			search_web_archive(sub_domain, search, exclude, repeat, out_domain_path)
+			search_web_archive(sub_domain, search, exclude, repeat, out_domain_path, silent)
 		}
 
 	} else {
 		// 查询是否包含
-		if online == "true" {
+		if online {
 			if IsOnline(domain) {
-				search_web_archive(domain, search, exclude, repeat, out_domain_path)
+				search_web_archive(domain, search, exclude, repeat, out_domain_path, silent)
 				return
 			}
 		}
 
-		search_web_archive(domain, search, exclude, repeat, out_domain_path)
+		search_web_archive(domain, search, exclude, repeat, out_domain_path, silent)
 
 	}
 
@@ -147,7 +177,7 @@ example: arewsSearch -d example.com -s jump,proxy ...
 
 }
 
-func search_web_archive(domain string, search string, exclude string, repeat string, out_domain_path string) string {
+func search_web_archive(domain string, search string, exclude string, repeat bool, out_domain_path string, silent bool) string {
 
 	// 替换逗号
 	match_search := strings.Replace(search, ",", ")|(", -1)
@@ -172,14 +202,21 @@ func search_web_archive(domain string, search string, exclude string, repeat str
 	Url.RawQuery = params.Encode()
 	urlPath := Url.String()
 
-	resp, _ := http.Get(urlPath)
-	defer resp.Body.Close()
+	resp, err := archive_client.R().Get(urlPath)
+	// resp, err := http.Get(urlPath)
+	if err != nil  {
+		if !silent{
+			fmt.Println("[*] Network error: network unreachable")
+		}
+		return "Network error"
+	}
+	// defer resp.Body.Close()
 
-	body, _ := ioutil.ReadAll(resp.Body)
+	// body, _ := ioutil.ReadAll(resp.Body)
 
-	// fmt.Println(reflect.TypeOf(body))
+	// fmt.Println(reflect.TypeOf(resp))
 
-	url_list := strings.Split(string(body), "\n")
+	url_list := strings.Split(resp.String(), "\n")
 
 	// 遍历返回内容
 	for _, value := range url_list {
@@ -199,9 +236,9 @@ func search_web_archive(domain string, search string, exclude string, repeat str
 			}
 
 			// 判断是否去重
-			if repeat == "false" {
-				if is_proxy {
-					client.R().Get(value)
+			if !repeat {
+				if is_scan_proxy {
+					scan_client.R().Get(value)
 				}
 				fmt.Println(value)
 				continue
@@ -210,8 +247,8 @@ func search_web_archive(domain string, search string, exclude string, repeat str
 			// 判断是否是新的path ,是就保存
 			if ok := IsContainStr(url_set, path); !ok {
 				url_set = append(url_set, path)
-				if is_proxy {
-					client.R().Get(value)
+				if is_scan_proxy {
+					scan_client.R().Get(value)
 				}
 				fmt.Println(value)
 			}
@@ -219,7 +256,7 @@ func search_web_archive(domain string, search string, exclude string, repeat str
 		}
 	}
 
-	return "结束"
+	return "ok"
 }
 
 // 判断元素是否存在于数组中
