@@ -32,7 +32,7 @@ func main() {
 |   |   |__|.-----.-----.-----.|  |--.
 |       |  ||__ --|  -__|  -__||    < 
 |___|___|__||_____|_____|_____||__|__|
-                                        v1.0.2
+                                        v1.0.4
 
 Search from "https://web.archive.org/cdx/search/cdx" matching urls containing a specific name
 example: Hiseek -d example.com -s jump,proxy ...
@@ -60,7 +60,7 @@ example: Hiseek -d example.com -s jump,proxy ...
 	flag.StringVar(&search, "s", "", "查询匹配字符 （可同时匹配多个字符,使用 ',' 隔开）")
 	flag.StringVar(&exclude, "e", "", "排除匹配字符 （可同时匹配多个字符,使用 ',' 隔开）")
 	flag.StringVar(&world_dict, "w", "", "子域名字典")
-	flag.StringVar(&out_domain_path, "od", "", "导出域名字典")
+	flag.StringVar(&out_domain_path, "o", "", "导出域名字典")
 	flag.StringVar(&proxy, "proxy", "", "使用代理，网络不通的需要设置代理")
 	flag.StringVar(&scan, "scan", "", "设置被动扫描器")
 	flag.BoolVar(&repeat, "re", true, "是否去除重复path  (true,false)")
@@ -91,7 +91,7 @@ example: Hiseek -d example.com -s jump,proxy ...
 		}
 		
 		archive_client.SetProxy(proxy)
-		archive_client.SetTimeout(0)
+		// archive_client.SetTimeout(time.Second * 1)
 
 	}
 
@@ -106,7 +106,7 @@ example: Hiseek -d example.com -s jump,proxy ...
 		}
 		scan_client = *resty.New()
 		scan_client.SetProxy(scan)
-		scan_client.SetTimeout(0)
+		// scan_client.SetTimeout(time.Second * 1)
 
 	}
 
@@ -193,6 +193,12 @@ func search_web_archive(domain string, search string, exclude string, repeat boo
 		return "domain为空"
 	}
 
+	// 快速判断是否网络可达
+	if _,err := archive_client.SetTimeout(time.Second * 1).R().Get(Url.String());err != nil{
+		fmt.Println("[*] Network error: network unreachable")
+		return "Network error"
+	}
+
 	// 参数
 	params.Set("url", "*."+domain+"/*")
 	params.Set("output", "text")
@@ -202,7 +208,7 @@ func search_web_archive(domain string, search string, exclude string, repeat boo
 	Url.RawQuery = params.Encode()
 	urlPath := Url.String()
 
-	resp, err := archive_client.R().Get(urlPath)
+	resp, err := archive_client.SetTimeout(0).R().Get(urlPath)
 	// resp, err := http.Get(urlPath)
 	if err != nil  {
 		if !silent{
@@ -210,11 +216,6 @@ func search_web_archive(domain string, search string, exclude string, repeat boo
 		}
 		return "Network error"
 	}
-	// defer resp.Body.Close()
-
-	// body, _ := ioutil.ReadAll(resp.Body)
-
-	// fmt.Println(reflect.TypeOf(resp))
 
 	url_list := strings.Split(resp.String(), "\n")
 
@@ -238,7 +239,7 @@ func search_web_archive(domain string, search string, exclude string, repeat boo
 			// 判断是否去重
 			if !repeat {
 				if is_scan_proxy {
-					scan_client.R().Get(value)
+					scan_client.SetTimeout(time.Second * 1).R().Get(value)
 				}
 				fmt.Println(value)
 				continue
@@ -248,7 +249,7 @@ func search_web_archive(domain string, search string, exclude string, repeat boo
 			if ok := IsContainStr(url_set, path); !ok {
 				url_set = append(url_set, path)
 				if is_scan_proxy {
-					scan_client.R().Get(value)
+					scan_client.SetTimeout(time.Second * 1).R().Get(value)
 				}
 				fmt.Println(value)
 			}
@@ -271,6 +272,7 @@ func IsContainStr(items []string, item string) bool {
 
 // 判断网络是否正常访问
 func IsOnline(domain string) bool {
+	// 暂时以ping 方式简单检测网络联通性
 
 	cmd := exec.Command("ping", domain, "-c", "1", "-W", "5")
 	err := cmd.Run()
@@ -397,11 +399,5 @@ func has_stdin() bool {
 	}
 
 	return true
-	// s := bufio.NewScanner(os.Stdin)
-
-	// for s.Scan() {
-	// 	resList = append(resList, s.Text())
-	// }
-
-	// return "管道有数据" ,true
+	
 }

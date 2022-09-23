@@ -12,11 +12,6 @@ if [[ -z "${VERSION}" ]]; then
     exit 1
 fi
 
-# if [[ -z "${GITHUB_TOKEN}" ]]; then
-#     echo "You forgot to set your GITHUB_TOKEN"
-#     exit 2
-# fi
-
 cd ${PROJDIR}
 
 # Run the tests
@@ -57,6 +52,3 @@ for ARCH in "amd64" "386"; do
         FILELIST="${FILELIST} ${PROJDIR}/${ARCHIVE}"
     done
 done
-
-# gh release create ${TAG} ${FILELIST}
-# rm ${FILELIST}
