@@ -32,7 +32,7 @@ func main() {
 |   |   |__|.-----.-----.-----.|  |--.
 |       |  ||__ --|  -__|  -__||    < 
 |___|___|__||_____|_____|_____||__|__|
-                                        v1.0.9
+                                        v1.1.0
 
 Search from "https://web.archive.org/cdx/search/cdx" matching urls containing a specific name
 example: Hiseek -d example.com -s jump,proxy ...
@@ -47,7 +47,7 @@ example: Hiseek -d example.com -s jump,proxy ...
 	var search string
 	var exclude string
 	var world_dict string
-	var repeat bool
+	var disrepeat bool
 	var out_domain_path string
 	var proxy string
 	var scan string
@@ -63,7 +63,7 @@ example: Hiseek -d example.com -s jump,proxy ...
 	flag.StringVar(&out_domain_path, "o", "", "导出域名字典")
 	flag.StringVar(&proxy, "proxy", "", "使用代理，网络不通的需要设置代理")
 	flag.StringVar(&scan, "scan", "", "设置被动扫描器")
-	flag.BoolVar(&repeat, "re", true, "是否去除重复path  (true,false)")
+	flag.BoolVar(&disrepeat, "disrepeat", false, "是否去除重复path")
 	flag.BoolVar(&online, "online", false, "检查是否在线 (true,false)")
 	flag.BoolVar(&silent, "silent", false, "静默状态")
 
@@ -119,12 +119,12 @@ example: Hiseek -d example.com -s jump,proxy ...
 			
 			if online {
 				if IsOnline(s.Text()) {
-					search_web_archive(s.Text(), search, exclude, repeat, out_domain_path, silent)
+					search_web_archive(s.Text(), search, exclude, disrepeat, out_domain_path, silent)
 					continue
 				}
 			}
 
-			search_web_archive(s.Text(), search, exclude, repeat, out_domain_path, silent)
+			search_web_archive(s.Text(), search, exclude, disrepeat, out_domain_path, silent)
 		}
 
 	}
@@ -149,24 +149,24 @@ example: Hiseek -d example.com -s jump,proxy ...
 			fmt.Println(sub_domain)
 			if online{
 				if IsOnline(sub_domain) {
-					search_web_archive(sub_domain, search, exclude, repeat, out_domain_path, silent)
+					search_web_archive(sub_domain, search, exclude, disrepeat, out_domain_path, silent)
 					continue
 				}
 			}
 
-			search_web_archive(sub_domain, search, exclude, repeat, out_domain_path, silent)
+			search_web_archive(sub_domain, search, exclude, disrepeat, out_domain_path, silent)
 		}
 
 	} else {
 		// 查询是否包含
 		if online {
 			if IsOnline(domain) {
-				search_web_archive(domain, search, exclude, repeat, out_domain_path, silent)
+				search_web_archive(domain, search, exclude, disrepeat, out_domain_path, silent)
 				return
 			}
 		}
 
-		search_web_archive(domain, search, exclude, repeat, out_domain_path, silent)
+		search_web_archive(domain, search, exclude, disrepeat, out_domain_path, silent)
 
 	}
 
@@ -177,7 +177,7 @@ example: Hiseek -d example.com -s jump,proxy ...
 
 }
 
-func search_web_archive(domain string, search string, exclude string, repeat bool, out_domain_path string, silent bool) string {
+func search_web_archive(domain string, search string, exclude string, disrepeat bool, out_domain_path string, silent bool) string {
 
 	// 替换逗号
 	match_search := strings.Replace(search, ",", ")|(", -1)
@@ -230,14 +230,14 @@ func search_web_archive(domain string, search string, exclude string, repeat boo
 			if exclude != "" {
 				// 排除含有特殊字符的 例如排除 www.domain.com
 
-				if is_exclude, _ := regexp.MatchString(exclude_pattern, path); is_exclude {
+				if is_exclude, _ := regexp.MatchString(exclude_pattern, value); is_exclude {
 					continue
 				}
 
 			}
 
 			// 判断是否去重
-			if !repeat {
+			if disrepeat {
 				if is_scan_proxy {
 					scan_client.SetTimeout(time.Second * 1).R().Get(value)
 				}

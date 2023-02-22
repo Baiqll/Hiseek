@@ -24,9 +24,12 @@
   # 使用子域名 查询（example.com 存档记录太多时，有些记录查不到，可以使用 example.com 的子域名进行搜索）
   echo example.com | Hiseek -w dict.txt 
 
+  # path是否去重 （默认去重，可以设置不需要去重）
+
+  echo example.com | Hiseek -disrepeat
+
   # 查询结果导出 子域名、子域名字典
   # 生成 sub_domain_example.txt 、dict_example.txt 两个文件
-
   cat example.com | Hiseek -od example.txt
 
   # 联合xray、nuclei 等进行被动扫描
