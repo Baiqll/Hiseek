@@ -146,7 +146,7 @@ example: Hiseek -d example.com -s jump,proxy ...
 				continue
 			}
 
-			fmt.Println(sub_domain)
+			// fmt.Println(sub_domain)
 			if online{
 				if IsOnline(sub_domain) {
 					search_web_archive(sub_domain, search, exclude, disrepeat, out_domain_path, silent)
